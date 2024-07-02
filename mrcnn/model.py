@@ -20,7 +20,7 @@ import tensorflow as tf
 import tensorflow.keras as keras
 import tensorflow.keras.backend as K
 import tensorflow.keras.layers as KL
-import tensorflow.keras.layers as KE
+# import tensorflow.keras.layers as KE
 import tensorflow.keras.utils as KU
 from tensorflow.python.eager import context
 import tensorflow.keras.models as KM
@@ -291,6 +291,13 @@ class ProposalLayer(KL.Layer):
         self.proposal_count = proposal_count
         self.nms_threshold = nms_threshold
 
+    def get_config(self):
+        config = super(ProposalLayer, self).get_config()
+        config["config"] = self.config.to_dict()
+        config["proposal_count"] = self.proposal_count
+        config["nms_threshold"] = self.nms_threshold
+        return config
+
     def call(self, inputs):
         # Box Scores. Use the foreground class confidence. [Batch, num_rois, 1]
         scores = inputs[0][:, :, 1]
@@ -302,7 +309,7 @@ class ProposalLayer(KL.Layer):
 
         # Improve performance by trimming to top anchors by score
         # and doing the rest on the smaller subset.
-        pre_nms_limit = tf.minimum(self.config.PRE_NMS_LIMIT, tf.shape(anchors)[1])
+        pre_nms_limit = tf.minimum(self.config.PRE_NMS_LIMIT, tf.shape(input=anchors)[1])
         ix = tf.nn.top_k(scores, pre_nms_limit, sorted=True,
                          name="top_anchors").indices
         scores = utils.batch_slice([scores, ix], lambda x, y: tf.gather(x, y),
@@ -339,15 +346,20 @@ class ProposalLayer(KL.Layer):
                 self.nms_threshold, name="rpn_non_max_suppression")
             proposals = tf.gather(boxes, indices)
             # Pad if needed
-            padding = tf.maximum(self.proposal_count - tf.shape(proposals)[0], 0)
-            proposals = tf.pad(proposals, [(0, padding), (0, 0)])
+            padding = tf.maximum(self.proposal_count - tf.shape(input=proposals)[0], 0)
+            proposals = tf.pad(tensor=proposals, paddings=[(0, padding), (0, 0)])
             return proposals
         proposals = utils.batch_slice([boxes, scores], nms,
                                       self.config.IMAGES_PER_GPU)
+
+        if not context.executing_eagerly():
+            # Infer the static output shape if eager execution is off
+            out_shape = self.compute_output_shape(None)
+            proposals.set_shape(out_shape)
         return proposals
 
     def compute_output_shape(self, input_shape):
-        return (None, self.proposal_count, 4)
+        return None, self.proposal_count, 4
 
 
 ############################################################
@@ -356,7 +368,7 @@ class ProposalLayer(KL.Layer):
 
 def log2_graph(x):
     """Implementation of Log2. TF doesn't have a native implementation."""
-    return tf.log(x) / tf.log(2.0)
+    return tf.math.log(x) / tf.math.log(2.0)
 
 
 class PyramidROIAlign(KL.Layer):
