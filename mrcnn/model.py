@@ -2135,8 +2135,8 @@ class MaskRCNN(object):
         exclude: list of layer names to exclude
         """
         import h5py
-        # from tensorflow.python.keras.saving import hdf5_format
-        from mrcnn import hd5 as hdf5_format
+        from tensorflow.python.keras.saving import hdf5_format
+        # from mrcnn import hd5 as hdf5_format
 
         if exclude:
             by_name = True
@@ -2151,7 +2151,7 @@ class MaskRCNN(object):
         # of the inner model because they have the weights.
         keras_model = self.keras_model
         layers = keras_model.inner_model.layers if hasattr(keras_model, "inner_model")\
-            else keras_model.layers
+        else keras_model.layers
 
         # Exclude some layers
         if exclude:
@@ -2314,9 +2314,6 @@ class MaskRCNN(object):
                 clipnorm=self.config.GRADIENT_CLIP_NORM)
 
         # Add Losses
-        # # First, clear previously set losses to avoid duplication
-        # self.keras_model._losses = []
-        # self.keras_model._per_input_losses = {}
         loss_names = [
             "rpn_class_loss",  "rpn_bbox_loss",
             "mrcnn_class_loss", "mrcnn_bbox_loss", "mrcnn_mask_loss"]
