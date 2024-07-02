@@ -97,6 +97,9 @@ def display_instances(image, boxes, masks, class_ids, class_names,
     colors: (optional) An array or colors to use with each object
     captions: (optional) A list of strings to use as captions for each object
     """
+    # If using minimask
+    if masks.shape[:2] != image.shape[:2]:
+        masks = utils.expand_mask(boxes, masks, image.shape)
     # Number of instances
     N = boxes.shape[0]
     if not N:
